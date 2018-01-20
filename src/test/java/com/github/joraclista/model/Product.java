@@ -1,4 +1,4 @@
-package com.github.joraclista;
+package com.github.joraclista.model;
 
 import com.amazonaws.services.dynamodbv2.datamodeling.*;
 import lombok.Data;
@@ -11,7 +11,6 @@ import java.util.List;
  * version 1.0.
  */
 @DynamoDBTable(tableName = "Products")
-@DynamoDBDocument
 @Data
 public class Product {
 
