@@ -27,68 +27,59 @@ public class DynamoDBScanTest {
     @DisplayName("Full 'Products' table scan")
     @Test
     public void productsTableScanTest() {
-        new DynamoItemsImporter<>(
-                region,
-                "Products",
-                100,
-                50,
-                item -> item,
-                Product.class
-        ).getTableData().forEach(item -> log.info("item: {}", item));
+        new DynamoItemsImporter<>(region, "Products", Product.class)
+                .withItemsMappingFunction(item -> item)
+                .withItemsPerScan(100)
+                .withPauseBetweenScans(50)
+                .getTableData()
+                .forEach(item -> log.info("item: {}", item));
     }
 
     @DisplayName("Not Annotated Mapping Class Test")
     @Test
     public void tableScanTestNotAnnotatedMappingClass() {
-        Throwable exception = assertThrows(RuntimeException.class, () -> new DynamoItemsImporter<>(
-                region,
-                "Products",
-                100,
-                50,
-                item -> item,
-                NotAnnotatedModel.class
-        ).getTableData().forEach(item -> log.info("item: {}", item)));
+        Throwable exception = assertThrows(RuntimeException.class, () -> new DynamoItemsImporter<>(region, "Products", NotAnnotatedModel.class)
+                .withItemsMappingFunction(item -> item)
+                .withItemsPerScan(100)
+                .getTableData()
+                .forEach(item -> log.info("item: {}", item)));
         assertEquals(exception.getMessage(), "Mapping class '" + NotAnnotatedModel.class.getName() + "' should be annotated with @DynamoDBTable annotation");
     }
 
     @DisplayName("Not Annotated Hash Key")
     @Test
     public void tableScanTestNotAnnotatedHashKey() {
-        Throwable exception = assertThrows(DynamoDBMappingException.class, () -> new DynamoItemsImporter<>(
-                region,
-                "Products",
-                100,
-                50,
-                item -> item,
-                NotAnnotatedHashKeyModel.class
-        ).getTableData().forEach(item -> log.info("item: {}", item)));
+        Throwable exception = assertThrows(DynamoDBMappingException.class, () -> new DynamoItemsImporter<>(region, "Products", NotAnnotatedHashKeyModel.class)
+                .withItemsMappingFunction(item -> item)
+                .withItemsPerScan(100)
+                .getTableData()
+                .forEach(item -> log.info("item: {}", item)));
         assertTrue(exception.getMessage().contains("no mapping for HASH key"));
     }
 
     @DisplayName("Test table name")
     @Test
     public void tableNameEmptyOrNullTest() {
-        Throwable exception = assertThrows(IllegalArgumentException.class, () -> new DynamoItemsImporter<>(
-                region,
-                "",
-                100,
-                50,
-                item -> item,
-                Order.class
-        ).getTableData().forEach(item -> log.info("item: {}", item)));
+        Throwable exception = assertThrows(IllegalArgumentException.class, () -> new DynamoItemsImporter<>(region, "Orders", Order.class)
+                .withItemsMappingFunction(item -> item)
+                .withItemsPerScan(100)
+                .getTableData()
+                .forEach(item -> log.info("item: {}", item)));
         assertTrue(exception.getMessage().contains("Table name should not be empty or null"));
     }
 
     @DisplayName("Consume one by one 'Order' table items")
     @Test
     public void orderTableConsumeOperationTest() {
-        new DynamoItemsImporter<>(
-                region,
-                "Orders",
-                100,
-                50,
-                item -> item,
-                Order.class
-        ).consumeTableData(item -> log.info("item: {}", item));
+        new DynamoItemsImporter<>(region, "Orders", Order.class)
+                .consumeTableData(item -> log.info("item: {}", item));
+    }
+
+    @DisplayName("Map + Consume one by one 'Order' table items")
+    @Test
+    public void orderTableMapAndConsumeOperationTest() {
+        new DynamoItemsImporter<Order, Order>(region, "Orders", Order.class)
+                .withItemsMappingFunction(item -> {item.setId("***" + item.getId() + "***"); return item;})
+                .consumeTableData(item -> log.info("item: {}", item));
     }
 }

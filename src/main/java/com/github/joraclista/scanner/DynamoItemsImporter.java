@@ -31,17 +31,16 @@ public class DynamoItemsImporter<T, E> {
     private enum Operation {READ_ALL, CONSUME_ONE_BY_ONE}
 
     private final DynamoDbAPI dynamoClient;
-    private final int itemsPerScan;
-    private final int pauseBetweenScans;
-    private final Function<T, E> itemsMappingFunction;
     private final String tableName;
     private final Class<T> tableMappingClass;
 
+    private int itemsPerScan;
+    private int pauseBetweenScans;
+    private Function<T, E> itemsMappingFunction;
+
+
     public DynamoItemsImporter(Regions regions,
                                String tableName,
-                               Integer itemsPerScan,
-                               Integer pauseBetweenScans,
-                               Function<T, E> itemsMappingFunction,
                                Class<T> tableMappingClass) {
         if (tableName == null || tableName.trim().isEmpty()) {
             throw new IllegalArgumentException("Table name should not be empty or null");
@@ -51,10 +50,24 @@ public class DynamoItemsImporter<T, E> {
         }
         this.dynamoClient = new DynamoDbAPI(regions);
         this.tableName = tableName;
-        this.itemsPerScan = itemsPerScan == null ? ITEMS_PER_DYNAMO_SCAN : itemsPerScan;
-        this.pauseBetweenScans = pauseBetweenScans == null ? PAUSE_BETWEEN_DYNAMO_SCANS_IN_MS : pauseBetweenScans;
-        this.itemsMappingFunction = itemsMappingFunction;
+
+
         this.tableMappingClass = tableMappingClass;
+    }
+
+    public DynamoItemsImporter withPauseBetweenScans(Integer pauseBetweenScans) {
+        this.pauseBetweenScans = pauseBetweenScans == null ? PAUSE_BETWEEN_DYNAMO_SCANS_IN_MS : pauseBetweenScans;
+        return this;
+    }
+
+    public DynamoItemsImporter withItemsPerScan(Integer itemsPerScan) {
+        this.itemsPerScan = itemsPerScan == null ? ITEMS_PER_DYNAMO_SCAN : itemsPerScan;
+        return this;
+    }
+
+    public DynamoItemsImporter withItemsMappingFunction(Function<T, E> itemsMappingFunction) {
+        this.itemsMappingFunction = itemsMappingFunction;
+        return this;
     }
 
     private PaginatedScanList<T> getPaginatedList() {
