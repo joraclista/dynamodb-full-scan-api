@@ -1,4 +1,4 @@
-package com.github.joraclista;
+package com.github.joraclista.api;
 
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;

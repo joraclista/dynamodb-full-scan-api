@@ -1,4 +1,4 @@
-package com.github.joraclista;
+package com.github.joraclista.scanner;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMappingException;
@@ -34,7 +34,7 @@ public class DynamoDBScanTest {
                 50,
                 item -> item,
                 Product.class
-        ).getProcessedTableData().forEach(item -> log.info("item: {}", item));
+        ).getTableData().forEach(item -> log.info("item: {}", item));
     }
 
     @DisplayName("Not Annotated Mapping Class Test")
@@ -47,7 +47,7 @@ public class DynamoDBScanTest {
                 50,
                 item -> item,
                 NotAnnotatedModel.class
-        ).getProcessedTableData().forEach(item -> log.info("item: {}", item)));
+        ).getTableData().forEach(item -> log.info("item: {}", item)));
         assertEquals(exception.getMessage(), "Mapping class '" + NotAnnotatedModel.class.getName() + "' should be annotated with @DynamoDBTable annotation");
     }
 
@@ -61,13 +61,27 @@ public class DynamoDBScanTest {
                 50,
                 item -> item,
                 NotAnnotatedHashKeyModel.class
-        ).getProcessedTableData().forEach(item -> log.info("item: {}", item)));
+        ).getTableData().forEach(item -> log.info("item: {}", item)));
         assertTrue(exception.getMessage().contains("no mapping for HASH key"));
     }
 
-    @DisplayName("Full 'Order' table scan")
+    @DisplayName("Test table name")
     @Test
-    public void orderTableScanTest() {
+    public void tableNameEmptyOrNullTest() {
+        Throwable exception = assertThrows(IllegalArgumentException.class, () -> new DynamoItemsImporter<>(
+                region,
+                "",
+                100,
+                50,
+                item -> item,
+                Order.class
+        ).getTableData().forEach(item -> log.info("item: {}", item)));
+        assertTrue(exception.getMessage().contains("Table name should not be empty or null"));
+    }
+
+    @DisplayName("Consume one by one 'Order' table items")
+    @Test
+    public void orderTableConsumeOperationTest() {
         new DynamoItemsImporter<>(
                 region,
                 "Orders",
@@ -75,6 +89,6 @@ public class DynamoDBScanTest {
                 50,
                 item -> item,
                 Order.class
-        ).getProcessedTableData().forEach(item -> log.info("item: {}", item));
+        ).consumeTableData(item -> log.info("item: {}", item));
     }
 }

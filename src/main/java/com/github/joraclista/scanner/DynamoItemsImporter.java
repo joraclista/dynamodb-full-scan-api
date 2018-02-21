@@ -1,16 +1,18 @@
-package com.github.joraclista;
+package com.github.joraclista.scanner;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
 import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
+import com.github.joraclista.api.DynamoDbAPI;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapperConfig.PaginationLoadingStrategy.LAZY_LOADING;
@@ -26,6 +28,8 @@ public class DynamoItemsImporter<T, E> {
     private static final int ITEMS_PER_DYNAMO_SCAN = 200;
     private static final int PAUSE_BETWEEN_DYNAMO_SCANS_IN_MS = 50;
 
+    private enum Operation {READ_ALL, CONSUME_ONE_BY_ONE}
+
     private final DynamoDbAPI dynamoClient;
     private final int itemsPerScan;
     private final int pauseBetweenScans;
@@ -39,14 +43,17 @@ public class DynamoItemsImporter<T, E> {
                                Integer pauseBetweenScans,
                                Function<T, E> itemsMappingFunction,
                                Class<T> tableMappingClass) {
+        if (tableName == null || tableName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Table name should not be empty or null");
+        }
+        if (tableMappingClass.getAnnotationsByType(DynamoDBTable.class).length == 0) {
+            throw new IllegalArgumentException("Mapping class '" + tableMappingClass.getName() + "' should be annotated with @DynamoDBTable annotation");
+        }
         this.dynamoClient = new DynamoDbAPI(regions);
         this.tableName = tableName;
         this.itemsPerScan = itemsPerScan == null ? ITEMS_PER_DYNAMO_SCAN : itemsPerScan;
         this.pauseBetweenScans = pauseBetweenScans == null ? PAUSE_BETWEEN_DYNAMO_SCANS_IN_MS : pauseBetweenScans;
         this.itemsMappingFunction = itemsMappingFunction;
-        if (tableMappingClass.getAnnotationsByType(DynamoDBTable.class).length == 0) {
-            throw new IllegalArgumentException("Mapping class '" + tableMappingClass.getName() + "' should be annotated with @DynamoDBTable annotation");
-        }
         this.tableMappingClass = tableMappingClass;
     }
 
@@ -58,39 +65,52 @@ public class DynamoItemsImporter<T, E> {
                 .build());
     }
 
-    @SneakyThrows(InterruptedException.class)
-    public List<E> getProcessedTableData() {
-        val result = new ArrayList<E>();
-        requireNonNull(tableName, "Table Name shouldn't be null");
-        requireNonNull(itemsMappingFunction, "Items mapping function shouldn't be null");
+    public List<E> getTableData() {
+        return doOperation(Operation.READ_ALL, null);
+    }
 
-        log.info("processTableData: from table = {}", tableName);
+    public void consumeTableData(Consumer<E> itemsConsumer) {
+        doOperation(Operation.CONSUME_ONE_BY_ONE, itemsConsumer);
+    }
+
+
+    @SneakyThrows(InterruptedException.class)
+    private List<E> doOperation(Operation operation, Consumer<E> itemsConsumer) {
+        val result = new ArrayList<E>();
+        requireNonNull(itemsMappingFunction, "Items mapping function shouldn't be null");
+        if (Operation.CONSUME_ONE_BY_ONE.equals(operation))
+            requireNonNull(itemsConsumer, "Items consumer function shouldn't be null");
+        log.info("doOperation: starting scan for table = '{}'", tableName);
 
         val list = getPaginatedList();
-        log.info("updateData: received items from dynamoDb");
+        log.info("doOperation: received items from dynamoDb");
 
         val iterator = list.iterator();
         int counter = 0;
 
-        val preparedItems = new ArrayList<E>();
-
         while (iterator.hasNext()) {
             val item = iterator.next();
             try {
-                preparedItems.add(itemsMappingFunction.apply(item));
+                E mappedItem = itemsMappingFunction.apply(item);
+                switch (operation) {
+                    case CONSUME_ONE_BY_ONE:
+                        itemsConsumer.accept(mappedItem);
+                        break;
+                    case READ_ALL:
+                        result.add(mappedItem);
+                        break;
+                }
+
             } catch (Exception e) {
-                log.error("Couldn't process item :  due to {}", e.getMessage());
+                log.error("doOperation: Couldn't process item : due to {}", e.getMessage());
             }
 
             if (counter % (itemsPerScan - 1) == 0 && counter > 0 || !iterator.hasNext()) {
-                log.info("We've reached the threshold [{} items], going to sleep for {} ms.", itemsPerScan, pauseBetweenScans);
-                result.addAll(preparedItems);
-                preparedItems.clear();
+                log.info("doOperation: We've reached the threshold [{} items], going to sleep for {} ms.", itemsPerScan, pauseBetweenScans);
                 Thread.sleep(pauseBetweenScans);
             }
             counter++;
         }
         return result;
     }
-
 }
