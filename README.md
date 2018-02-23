@@ -15,7 +15,7 @@ This api works with AWS DynamoDB thus you should have
   * Java System Properties - *aws.accessKeyId* and *aws.secretKey*
   * Credential profiles file at the default location (*~/.aws/credentials*)
 3) dynamoDB storage service activated for your account
-4) for test purposes pls [create table](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleData.CreateTables.html) ShopProducts with simple key id (string)
+4) for test purposes pls [create table](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SampleData.CreateTables.html) *Products* table with simple key id (string) and title (string) attribute + *Orders* table with key id (string) and merchantId (string) attribute
 
 ### Build & Test
 This is a regular, Maven based project.
