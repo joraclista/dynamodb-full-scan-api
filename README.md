@@ -53,7 +53,7 @@ new DynamoItemsImporter<>(Regions.US_EAST_1, Product.class)
 Optionally pass ItemsPerScan/PauseBetweenScans values, otherwise default will be used (itemsPerScan=100 and pauseBetweenScans=50ms)
 
 ### Consume one by one all items in dynamodb table:
-1. Create Mapped Class for your source table (see above)
+1. Create Mapped Class for your source table [see above](https://github.com/joraclista/dynamodb-full-scan-api/blob/master/README.md#1-create-mapped-class-for-your-source-table-using-dynamodbtable-annotation-and-dynamodbhashkey-annotation)
 2.  Create DynamoItemsImporter instance for desired aws region and mapped class.
 ```java
 new DynamoItemsImporter<>(Regions.US_EAST_1, Product.class)
@@ -64,7 +64,7 @@ new DynamoItemsImporter<>(Regions.US_EAST_1, Product.class)
 Optionally pass ItemsPerScan/PauseBetweenScans values, otherwise default will be used (itemsPerScan=100 and pauseBetweenScans=50ms)
 
 ### Batch Consume all items in dynamodb table with batch size=itemsPerScan:
-1.  Create Mapped Class for your source table (see above)
+1.  Create Mapped Class for your source table [see above](https://github.com/joraclista/dynamodb-full-scan-api/blob/master/README.md#1-create-mapped-class-for-your-source-table-using-dynamodbtable-annotation-and-dynamodbhashkey-annotation)
 2.  Create DynamoItemsImporter instance for desired aws region and mapped class.
 ```java
 new DynamoItemsImporter<>(Regions.US_EAST_1, Product.class)
