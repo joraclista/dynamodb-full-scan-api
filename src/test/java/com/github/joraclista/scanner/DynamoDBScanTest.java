@@ -1,14 +1,11 @@
 package com.github.joraclista.scanner;
 
 import com.amazonaws.regions.Regions;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMappingException;
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.github.joraclista.model.*;
+import com.github.joraclista.model.Order;
+import com.github.joraclista.model.Product;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import org.junit.jupiter.api.DisplayName;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Created by Alisa
@@ -19,55 +16,32 @@ public class DynamoDBScanTest {
 
     private Regions region = Regions.US_EAST_1;
 
-    @DisplayName("Full 'Products' table scan")
+    @DisplayName("'Products' Table Full Scan Test")
     @Test
     public void productsTableScanTest() {
         new DynamoItemsImporter<>(region, Product.class)
-                .withItemsMappingFunction(item -> item)
                 .withItemsPerScan(100)
                 .withPauseBetweenScans(50)
                 .getTableData()
                 .forEach(item -> log.info("item: {}", item));
     }
 
-    @DisplayName("Not Annotated Mapping Class Test")
+    @DisplayName("'Products' Table Batch Consume Test")
     @Test
-    public void tableScanTestNotAnnotatedMappingClass() {
-        Throwable exception = assertThrows(RuntimeException.class, () -> new DynamoItemsImporter<>(region, NotAnnotatedModel.class)
-                .withItemsMappingFunction(item -> item)
+    public void productsTableBatchConsumeTest() {
+        new DynamoItemsImporter<>(region, Product.class)
                 .withItemsPerScan(100)
-                .getTableData());
-        assertEquals(exception.getMessage(), "Mapping class '" + NotAnnotatedModel.class.getName() + "' should be annotated with @DynamoDBTable annotation");
+                .withPauseBetweenScans(50)
+                .consumeBatchTableData(list -> log.info("count: {}", list.size()));
     }
 
-    @DisplayName("Not Annotated Hash Key")
+    @DisplayName("'Products' Table Consume Test")
     @Test
-    public void tableScanTestNotAnnotatedHashKey() {
-        Throwable exception = assertThrows(DynamoDBMappingException.class, () -> new DynamoItemsImporter<>(region, NotAnnotatedHashKeyModel.class)
-                .withItemsMappingFunction(item -> item)
+    public void productsTableConsumeTest() {
+        new DynamoItemsImporter<>(region, Product.class)
                 .withItemsPerScan(100)
-                .getTableData());
-        assertTrue(exception.getMessage().contains("no mapping for HASH key"));
-    }
-
-    @DisplayName("Test table name")
-    @Test
-    public void tableNameEmptyOrNullTest() {
-        Throwable exception = assertThrows(IllegalArgumentException.class, () -> new DynamoItemsImporter<>(region, EmptyTableName.class)
-                .withItemsMappingFunction(item -> item)
-                .withItemsPerScan(100)
-                .getTableData());
-        assertEquals(exception.getMessage(), "@DynamoDBTable annotation should have valid tableName");
-    }
-
-    @DisplayName("Test table name")
-    @Test
-    public void tableNameDoesNotExistTest() {
-        Throwable exception = assertThrows(ResourceNotFoundException.class, () -> new DynamoItemsImporter<>(region, NoSuchTable.class)
-                .withItemsMappingFunction(item -> item)
-                .withItemsPerScan(100)
-                .getTableData());
-        assertTrue(exception.getMessage().contains("Requested resource not found"));
+                .withPauseBetweenScans(50)
+                .consumeTableData(item -> log.info("item [id:title] = [{}:{}]", item.getId(), item.getTitle()));
     }
 
     @DisplayName("Consume one by one 'Order' table items")
@@ -77,11 +51,4 @@ public class DynamoDBScanTest {
                 .consumeTableData(item -> log.info("item: {}", item));
     }
 
-    @DisplayName("Map + Consume one by one 'Order' table items")
-    @Test
-    public void orderTableMapAndConsumeOperationTest() {
-        new DynamoItemsImporter<Order, Order>(region, Order.class)
-                .withItemsMappingFunction(item -> {item.setId("***" + item.getId() + "***"); return item;})
-                .consumeTableData(item -> log.info("item: {}", item));
-    }
 }
